@@ -15,7 +15,7 @@ describe("HomePage", () => {
 
   it("renders Join Queue links", () => {
     renderWithRouter(<HomePage />);
-    const links = screen.getAllByRole("link", { name: /Join Queue/i });
+    const links = screen.getAllByRole("link", { name: /Book Online|Walk-In Register/i });
     expect(links.length).toBeGreaterThan(0);
   });
 

@@ -318,15 +318,21 @@ export function HomePage() {
           </div>
 
           {/* CTA buttons */}
-          <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center">
+          <div className="mt-10 flex flex-col sm:flex-row gap-4 items-center justify-center">
             <Link to="/join">
               <Button variant="primary" size="lg">
                 <BarberPoleIcon className="w-4 h-4" aria-hidden="true" />
-                Join Queue Now
+                Book Online
+              </Button>
+            </Link>
+            <Link to="/walk-in">
+              <Button variant="secondary" size="lg">
+                <UsersIcon className="w-4 h-4" aria-hidden="true" />
+                Walk-In Register
               </Button>
             </Link>
             <a href="#services">
-              <Button variant="secondary" size="lg">
+              <Button variant="ghost" size="lg">
                 View Services
               </Button>
             </a>
@@ -391,14 +397,22 @@ export function HomePage() {
             Ready for Your Royal Shave?
           </h2>
           <p className="text-parchment/60 font-body text-base mb-8 leading-relaxed">
-            Skip the wait. Join the queue online and we'll have your chair ready when you arrive.
+            Already here? Use quick walk-in registration. Online bookings recommended to skip the wait.
           </p>
-          <Link to="/join">
-            <Button variant="primary" size="lg">
-              <BarberPoleIcon className="w-4 h-4" aria-hidden="true" />
-              Secure Your Spot
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/join">
+              <Button variant="primary" size="lg">
+                <BarberPoleIcon className="w-4 h-4" aria-hidden="true" />
+                Book Online
+              </Button>
+            </Link>
+            <Link to="/walk-in">
+              <Button variant="secondary" size="lg">
+                <UsersIcon className="w-4 h-4" aria-hidden="true" />
+                Walk-In Register
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
     </>
