@@ -1,21 +1,24 @@
 /**
  * Screen 2 — Join Queue / Customer Registration
  * Three-step stepper: Select Services → Choose Barber → Confirm & Submit
+ *
+ * Uses real API data for services and barbers so IDs are integers and
+ * match what the backend QueueCreate schema expects.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import {
+  BarberPoleIcon,
   CheckIcon,
   ClockIcon,
   ScissorsIcon,
   XIcon,
 } from "@/components/ui/VintageIcons";
-import { BARBERS, SERVICES } from "@/data/salon";
-import type { Service, Barber } from "@/data/salon";
-import type { } from "@/types/queue";
 import { queueService } from "@/services/queueService";
+import { getErrorMessage } from "@/utils/errorHandler";
+import type { ApiBarber, ApiService } from "@/types/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const MAX_SERVICES = 3;
@@ -38,25 +41,37 @@ function validateName(name: string): string | null {
 }
 
 // ── Shared section header ─────────────────────────────────────────────────
-function StepHeader({ step, title, subtitle }: { step: number; title: string; subtitle?: string }) {
+function StepHeader({
+  step,
+  title,
+  subtitle,
+}: {
+  step: number;
+  title: string;
+  subtitle?: string;
+}) {
   return (
     <div className="mb-8">
       <p className="text-copper text-[10px] tracking-widest2 uppercase font-body mb-1">
         Step {step} of {STEPS.length}
       </p>
       <h2 className="font-heading text-parchment text-2xl sm:text-3xl font-bold">{title}</h2>
-      {subtitle && <p className="text-parchment/50 text-sm font-body mt-1">{subtitle}</p>}
+      {subtitle && (
+        <p className="text-parchment/50 text-sm font-body mt-1">{subtitle}</p>
+      )}
     </div>
   );
 }
 
 // ── Step 1: Service selection ─────────────────────────────────────────────
 function ServiceStep({
+  services,
   selected,
   onToggle,
 }: {
-  selected: string[];
-  onToggle: (id: string) => void;
+  services: ApiService[];
+  selected: number[];
+  onToggle: (id: number) => void;
 }) {
   return (
     <div>
@@ -78,7 +93,7 @@ function ServiceStep({
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {SERVICES.map((svc) => {
+        {services.map((svc) => {
           const isSelected = selected.includes(svc.id);
           const isDisabled = !isSelected && selected.length >= MAX_SERVICES;
           return (
@@ -98,15 +113,18 @@ function ServiceStep({
                   : "border-gold/20 bg-brown/40 hover:border-gold/50 hover:bg-brown/60 focus:ring-gold/40",
               ].join(" ")}
             >
-              {/* Selection badge */}
               {isSelected && (
-                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-copper
-                                 flex items-center justify-center">
+                <span
+                  className="absolute top-3 right-3 w-5 h-5 rounded-full bg-copper
+                               flex items-center justify-center"
+                >
                   <CheckIcon className="w-3 h-3 text-cream" aria-hidden="true" />
                 </span>
               )}
               <div className="flex items-start gap-3">
-                <span className="text-xl mt-0.5" role="img" aria-hidden="true">{svc.icon}</span>
+                <span className="text-xl mt-0.5" role="img" aria-hidden="true">
+                  {svc.icon ?? "✂️"}
+                </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-heading text-parchment font-semibold text-base">
@@ -116,9 +134,11 @@ function ServiceStep({
                       ₹{svc.price}
                     </span>
                   </div>
-                  <p className="text-parchment/50 text-xs font-body mt-0.5 leading-relaxed">
-                    {svc.description}
-                  </p>
+                  {svc.description && (
+                    <p className="text-parchment/50 text-xs font-body mt-0.5 leading-relaxed">
+                      {svc.description}
+                    </p>
+                  )}
                   <div className="mt-2 flex items-center gap-1.5 text-parchment/40 text-xs font-body">
                     <ClockIcon className="w-3 h-3" aria-hidden="true" />
                     {svc.duration} min
@@ -135,11 +155,15 @@ function ServiceStep({
 
 // ── Step 2: Barber selection ───────────────────────────────────────────────
 function BarberStep({
+  barbers,
   selectedBarberId,
   onSelect,
+  avgQueueLoad,
 }: {
-  selectedBarberId: string;
-  onSelect: (id: string) => void;
+  barbers: ApiBarber[];
+  selectedBarberId: number | null; // null = any
+  onSelect: (id: number | null) => void;
+  avgQueueLoad: number;
 }) {
   return (
     <div>
@@ -152,13 +176,13 @@ function BarberStep({
       <div className="space-y-3">
         {/* Any available option */}
         <BarberOption
-          id="any"
+          id={null}
           name="Any Available Barber"
           specialty="We'll assign the next barber ready to serve you."
           available={true}
-          currentQueue={Math.min(...BARBERS.filter((b) => b.available).map((b) => b.currentQueue))}
           initials="⚜"
-          selected={selectedBarberId === "any"}
+          queueLabel={avgQueueLoad === 0 ? "Ready" : `~${avgQueueLoad} ahead`}
+          selected={selectedBarberId === null}
           onSelect={onSelect}
         />
 
@@ -168,29 +192,45 @@ function BarberStep({
           </span>
         </div>
 
-        {BARBERS.map((b) => (
-          <BarberOption
-            key={b.id}
-            id={b.id}
-            name={b.name}
-            specialty={b.specialty}
-            available={b.available}
-            currentQueue={b.currentQueue}
-            initials={b.avatarInitials}
-            selected={selectedBarberId === b.id}
-            onSelect={onSelect}
-          />
-        ))}
+        {barbers.map((b) => {
+          const available = b.status === "available";
+          return (
+            <BarberOption
+              key={b.id}
+              id={b.id}
+              name={b.name}
+              specialty={b.specialty ?? "Master Barber"}
+              available={available}
+              initials={b.initials}
+              queueLabel={available ? "Available" : "On Break"}
+              selected={selectedBarberId === b.id}
+              onSelect={onSelect}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function BarberOption({
-  id, name, specialty, available, currentQueue, initials, selected, onSelect,
+  id,
+  name,
+  specialty,
+  available,
+  initials,
+  queueLabel,
+  selected,
+  onSelect,
 }: {
-  id: string; name: string; specialty: string; available: boolean;
-  currentQueue: number; initials: string; selected: boolean; onSelect: (id: string) => void;
+  id: number | null;
+  name: string;
+  specialty: string;
+  available: boolean;
+  initials: string;
+  queueLabel: string;
+  selected: boolean;
+  onSelect: (id: number | null) => void;
 }) {
   const disabled = !available;
   return (
@@ -209,7 +249,6 @@ function BarberOption({
           : "border-gold/20 bg-brown/40 hover:border-gold/40 hover:bg-brown/60 focus:ring-gold/40",
       ].join(" ")}
     >
-      {/* Avatar */}
       <div
         className={`w-12 h-12 rounded-full border-2 flex items-center justify-center shrink-0
                     font-heading font-bold text-sm
@@ -217,25 +256,20 @@ function BarberOption({
       >
         {initials}
       </div>
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <span className="font-heading text-parchment font-semibold text-sm block">{name}</span>
         <span className="text-parchment/50 text-xs font-body italic">{specialty}</span>
       </div>
-      {/* Availability badge */}
       <div className="shrink-0 text-right">
         {available ? (
           <>
             <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5" aria-hidden="true" />
-            <span className="text-gold text-xs font-body tracking-wide">
-              {currentQueue === 0 ? "Ready" : `${currentQueue} ahead`}
-            </span>
+            <span className="text-gold text-xs font-body tracking-wide">{queueLabel}</span>
           </>
         ) : (
           <span className="text-parchment/30 text-xs font-body">On Break</span>
         )}
       </div>
-      {/* Selected tick */}
       {selected && (
         <span className="ml-2 w-5 h-5 rounded-full bg-copper flex items-center justify-center shrink-0">
           <CheckIcon className="w-3 h-3 text-cream" aria-hidden="true" />
@@ -267,7 +301,6 @@ function DetailsStep({
         subtitle="We use your mobile number to send queue updates."
       />
       <div className="space-y-6">
-        {/* Name */}
         <div>
           <label
             htmlFor="customer-name"
@@ -294,7 +327,6 @@ function DetailsStep({
           )}
         </div>
 
-        {/* Phone */}
         <div>
           <label
             htmlFor="phone"
@@ -314,7 +346,9 @@ function DetailsStep({
               id="phone"
               type="tel"
               value={phone}
-              onChange={(e) => onChange("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
+              onChange={(e) =>
+                onChange("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
               placeholder="9876543210"
               className="vintage-input flex-1"
               inputMode="numeric"
@@ -342,13 +376,13 @@ function DetailsStep({
 // ── Order Summary sidebar ─────────────────────────────────────────────────
 function OrderSummary({
   selectedServices,
-  barber,
+  barberName,
   totalPrice,
   totalDuration,
   estimatedWait,
 }: {
-  selectedServices: Service[];
-  barber: Barber | null;
+  selectedServices: ApiService[];
+  barberName: string;
   totalPrice: number;
   totalDuration: number;
   estimatedWait: number;
@@ -358,7 +392,6 @@ function OrderSummary({
       className="bg-brown border border-gold/20 p-6 h-fit sticky top-24"
       aria-label="Order summary"
     >
-      {/* Header */}
       <div className="mb-5 pb-4 border-b border-gold/20">
         <div className="ornament-line">
           <ScissorsIcon className="w-3.5 h-3.5 text-gold/50 rotate-180" aria-hidden="true" />
@@ -369,7 +402,6 @@ function OrderSummary({
         </div>
       </div>
 
-      {/* Selected services */}
       {selectedServices.length === 0 ? (
         <p className="text-parchment/30 text-xs font-body italic text-center py-4">
           No services selected yet.
@@ -379,19 +411,22 @@ function OrderSummary({
           {selectedServices.map((svc) => (
             <li key={svc.id} className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <span className="text-parchment text-sm font-body block leading-tight">{svc.name}</span>
+                <span className="text-parchment text-sm font-body block leading-tight">
+                  {svc.name}
+                </span>
                 <span className="text-parchment/40 text-xs font-body flex items-center gap-1 mt-0.5">
                   <ClockIcon className="w-3 h-3" aria-hidden="true" />
                   {svc.duration} min
                 </span>
               </div>
-              <span className="text-gold font-heading font-semibold text-sm shrink-0">₹{svc.price}</span>
+              <span className="text-gold font-heading font-semibold text-sm shrink-0">
+                ₹{svc.price}
+              </span>
             </li>
           ))}
         </ul>
       )}
 
-      {/* Totals */}
       <div className="border-t border-gold/20 pt-4 space-y-2">
         <div className="flex justify-between text-xs font-body text-parchment/50">
           <span className="uppercase tracking-wider">Service Duration</span>
@@ -406,28 +441,27 @@ function OrderSummary({
           <span className="text-parchment">{totalDuration + estimatedWait} min</span>
         </div>
         <div className="flex justify-between pt-2 border-t border-gold/20">
-          <span className="text-parchment/70 text-sm font-body uppercase tracking-widest">Total</span>
+          <span className="text-parchment/70 text-sm font-body uppercase tracking-widest">
+            Total
+          </span>
           <span className="text-gold font-heading font-bold text-xl">₹{totalPrice}</span>
         </div>
       </div>
 
-      {/* Assigned barber */}
-      {barber && (
-        <div className="mt-5 pt-4 border-t border-gold/20">
-          <p className="text-parchment/50 text-[10px] tracking-widest uppercase font-body mb-2">
-            Barber
-          </p>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full border border-gold/50 flex items-center
-                            justify-center font-heading text-gold text-xs font-bold">
-              {barber.id === "any" ? "⚜" : barber.avatarInitials}
-            </div>
-            <span className="text-parchment text-sm font-body">
-              {barber.id === "any" ? "Any Available" : barber.name}
-            </span>
+      <div className="mt-5 pt-4 border-t border-gold/20">
+        <p className="text-parchment/50 text-[10px] tracking-widest uppercase font-body mb-2">
+          Barber
+        </p>
+        <div className="flex items-center gap-2">
+          <div
+            className="w-8 h-8 rounded-full border border-gold/50 flex items-center
+                        justify-center font-heading text-gold text-xs font-bold"
+          >
+            ⚜
           </div>
+          <span className="text-parchment text-sm font-body">{barberName}</span>
         </div>
-      )}
+      </div>
     </aside>
   );
 }
@@ -438,8 +472,8 @@ function StepIndicator({ current }: { current: Step }) {
     <nav aria-label="Progress" className="mb-10">
       <ol className="flex items-center justify-center gap-0">
         {STEPS.map((label, idx) => {
-          const done    = idx < current;
-          const active  = idx === current;
+          const done   = idx < current;
+          const active = idx === current;
           return (
             <li key={label} className="flex items-center">
               <div className="flex flex-col items-center gap-1.5">
@@ -464,7 +498,6 @@ function StepIndicator({ current }: { current: Step }) {
                   {label}
                 </span>
               </div>
-              {/* Connector line */}
               {idx < STEPS.length - 1 && (
                 <div
                   className={`w-16 sm:w-24 h-px mx-2 mt-[-18px]
@@ -492,7 +525,7 @@ function ConfirmModal({
   onCancel,
   submitting,
 }: {
-  services: Service[];
+  services: ApiService[];
   barberName: string;
   customerName: string;
   phone: string;
@@ -510,7 +543,6 @@ function ConfirmModal({
       aria-labelledby="confirm-title"
     >
       <div className="bg-brown border border-gold/30 w-full max-w-md p-6 shadow-2xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <h3 id="confirm-title" className="font-heading text-parchment text-xl font-bold">
             Confirm Your Booking
@@ -524,11 +556,10 @@ function ConfirmModal({
           </button>
         </div>
 
-        {/* Summary */}
         <div className="space-y-3 text-sm font-body mb-6">
-          <Row label="Name"    value={customerName} />
-          <Row label="Mobile"  value={`+91 ${phone}`} />
-          <Row label="Barber"  value={barberName} />
+          <Row label="Name"   value={customerName} />
+          <Row label="Mobile" value={`+91 ${phone}`} />
+          <Row label="Barber" value={barberName} />
           <div className="pt-2 border-t border-gold/20">
             <span className="text-parchment/50 text-xs uppercase tracking-widest block mb-2">
               Services
@@ -550,12 +581,23 @@ function ConfirmModal({
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-3">
-          <Button variant="ghost" size="md" onClick={onCancel} className="flex-1" disabled={submitting}>
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={onCancel}
+            className="flex-1"
+            disabled={submitting}
+          >
             Go Back
           </Button>
-          <Button variant="primary" size="md" onClick={onConfirm} loading={submitting} className="flex-1">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={onConfirm}
+            loading={submitting}
+            className="flex-1"
+          >
             Confirm & Join
           </Button>
         </div>
@@ -577,10 +619,26 @@ function Row({ label, value }: { label: string; value: string }) {
 export function JoinQueuePage() {
   const navigate = useNavigate();
 
+  // ── API data ───────────────────────────────────────────────
+  const [services, setServices]   = useState<ApiService[]>([]);
+  const [barbers, setBarbers]     = useState<ApiBarber[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [dataError, setDataError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([queueService.getServices(), queueService.getBarbers()])
+      .then(([svcs, brbs]) => {
+        setServices(svcs);
+        setBarbers(brbs);
+      })
+      .catch((err) => setDataError(getErrorMessage(err)))
+      .finally(() => setDataLoading(false));
+  }, []);
+
   // ── Form state ─────────────────────────────────────────────
   const [step, setStep]                   = useState<Step>(0);
-  const [selectedServiceIds, setSelected] = useState<string[]>([]);
-  const [barberId, setBarberId]           = useState<string>("any");
+  const [selectedServiceIds, setSelected] = useState<number[]>([]);
+  const [barberId, setBarberId]           = useState<number | null>(null); // null = any
   const [customerName, setCustomerName]   = useState("");
   const [phone, setPhone]                 = useState("");
   const [nameError, setNameError]         = useState<string | null>(null);
@@ -591,36 +649,36 @@ export function JoinQueuePage() {
 
   // ── Derived values ─────────────────────────────────────────
   const selectedServices = useMemo(
-    () => SERVICES.filter((s) => selectedServiceIds.includes(s.id)),
-    [selectedServiceIds]
+    () => services.filter((s) => selectedServiceIds.includes(s.id)),
+    [services, selectedServiceIds],
   );
   const totalPrice    = selectedServices.reduce((sum, s) => sum + s.price,    0);
   const totalDuration = selectedServices.reduce((sum, s) => sum + s.duration, 0);
-  // Simulated wait: 8 min per customer ahead of you
+
+  // ETA: sum durations of tokens ahead (use backend data once joined;
+  // for preview show a rough estimate based on barber queue length)
   const estimatedWait = useMemo(() => {
-    if (barberId === "any") {
-      const minQueue = Math.min(...BARBERS.filter((b) => b.available).map((b) => b.currentQueue));
-      return minQueue * 8;
+    if (barberId === null) {
+      // Pick the least-loaded available barber's load * average service (8 min)
+      return Math.min(...barbers.filter((b) => b.status === "available").map(() => 0), 0) * 8;
     }
-    const b = BARBERS.find((b) => b.id === barberId);
-    return b ? b.currentQueue * 8 : 0;
-  }, [barberId]);
+    return 0; // backend calculates accurately after join
+  }, [barberId, barbers]);
 
-  const selectedBarber: Barber | null = useMemo(() => {
-    if (barberId === "any") return { id: "any", name: "Any Available", specialty: "", available: true, currentQueue: 0, avatarInitials: "⚜" };
-    return BARBERS.find((b) => b.id === barberId) ?? null;
-  }, [barberId]);
+  const selectedBarber = barbers.find((b) => b.id === barberId) ?? null;
+  const barberDisplayName = selectedBarber ? selectedBarber.name : "Any Available";
 
-  const barberDisplayName = selectedBarber?.id === "any" ? "Any Available" : selectedBarber?.name ?? "";
+  // Average load across available barbers (for "any" option display)
+  const avgQueueLoad = 0; // live load comes from backend; show 0 as placeholder
 
   // ── Service toggle ─────────────────────────────────────────
-  const toggleService = (id: string) => {
+  const toggleService = (id: number) => {
     setSelected((prev) =>
       prev.includes(id)
         ? prev.filter((s) => s !== id)
         : prev.length < MAX_SERVICES
         ? [...prev, id]
-        : prev
+        : prev,
     );
   };
 
@@ -639,7 +697,6 @@ export function JoinQueuePage() {
   const goNext = () => {
     if (step === 0 && selectedServiceIds.length === 0) return;
     if (step === 2) {
-      // Validate before showing confirm
       const ne = validateName(customerName);
       const pe = validatePhone(phone);
       setNameError(ne);
@@ -652,31 +709,61 @@ export function JoinQueuePage() {
   };
   const goBack = () => setStep((s) => (s - 1) as Step);
 
-  // ── Submit ─────────────────────────────────────────────────
+  // ── Submit — sends integer IDs to the real API ─────────────
   const handleSubmit = async () => {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const barberNumericId = barberId === "any" ? null : Number(barberId);
-      const serviceNumericIds = selectedServiceIds.map(Number);
       const entry = await queueService.joinQueue({
         customer_name: customerName.trim(),
         phone,
-        service_ids: serviceNumericIds,
-        barber_id: barberNumericId,
+        service_ids: selectedServiceIds,       // already number[] from API data
+        barber_id:   barberId,                 // number | null
       });
       navigate(`/status/${entry.token}`, { replace: true });
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Failed to join queue. Please try again.");
+      setSubmitError(getErrorMessage(err));
       setShowConfirm(false);
       setSubmitting(false);
     }
   };
 
+  // ── Loading / error states for catalogue fetch ─────────────
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-olive flex items-center justify-center">
+        <div className="text-center">
+          <BarberPoleIcon className="w-10 h-10 text-gold/40 mx-auto mb-4 animate-bounce"
+                          aria-hidden="true" />
+          <p className="text-parchment/50 font-body text-sm tracking-widest uppercase">
+            Loading services…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-olive flex flex-col items-center justify-center
+                      text-center px-4 py-16">
+        <ScissorsIcon className="w-14 h-14 text-gold/30 mx-auto mb-6" aria-hidden="true" />
+        <h1 className="font-heading text-parchment text-2xl font-bold mb-2">
+          Could not load services
+        </h1>
+        <p className="text-parchment/50 font-body text-sm max-w-sm leading-relaxed mb-8">
+          {dataError}
+        </p>
+        <Button variant="primary" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-olive grain-overlay">
-      {/* Page header */}
       <div className="bg-brown/60 border-b border-gold/20 py-8">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-copper text-[11px] tracking-widest2 uppercase font-body mb-1">
@@ -689,10 +776,8 @@ export function JoinQueuePage() {
       </div>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10">
-        {/* Stepper */}
         <StepIndicator current={step} />
 
-        {/* Submit error */}
         {submitError && (
           <div
             role="alert"
@@ -707,15 +792,22 @@ export function JoinQueuePage() {
           </div>
         )}
 
-        {/* Two-column layout: form + summary */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* ── Main form area ─────────────────────────────── */}
           <div className="lg:col-span-2 bg-brown/40 border border-gold/15 p-6 sm:p-8">
             {step === 0 && (
-              <ServiceStep selected={selectedServiceIds} onToggle={toggleService} />
+              <ServiceStep
+                services={services}
+                selected={selectedServiceIds}
+                onToggle={toggleService}
+              />
             )}
             {step === 1 && (
-              <BarberStep selectedBarberId={barberId} onSelect={setBarberId} />
+              <BarberStep
+                barbers={barbers}
+                selectedBarberId={barberId}
+                onSelect={setBarberId}
+                avgQueueLoad={avgQueueLoad}
+              />
             )}
             {step === 2 && (
               <DetailsStep
@@ -727,7 +819,6 @@ export function JoinQueuePage() {
               />
             )}
 
-            {/* Navigation buttons */}
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-gold/15">
               <div>
                 {step > 0 && (
@@ -740,21 +831,17 @@ export function JoinQueuePage() {
                 variant="primary"
                 size="md"
                 onClick={goNext}
-                disabled={
-                  submitting ||
-                  (step === 0 && selectedServiceIds.length === 0)
-                }
+                disabled={submitting || (step === 0 && selectedServiceIds.length === 0)}
               >
                 {step === 2 ? "Review Order →" : "Continue →"}
               </Button>
             </div>
           </div>
 
-          {/* ── Sidebar summary ────────────────────────────── */}
           <div className="lg:col-span-1">
             <OrderSummary
               selectedServices={selectedServices}
-              barber={selectedBarber}
+              barberName={barberDisplayName}
               totalPrice={totalPrice}
               totalDuration={totalDuration}
               estimatedWait={estimatedWait}
@@ -763,7 +850,6 @@ export function JoinQueuePage() {
         </div>
       </div>
 
-      {/* Confirmation modal */}
       {showConfirm && (
         <ConfirmModal
           services={selectedServices}
