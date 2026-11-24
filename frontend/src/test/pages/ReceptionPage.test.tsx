@@ -190,9 +190,14 @@ describe("ReceptionPage — status transitions", () => {
   });
 
   it("confirms transition and calls updateStatus", async () => {
-    setup([makeEntry()]);
+    // First fetch returns waiting (shows Call button), subsequent fetches return called
+    vi.mocked(queueService.getActiveQueue)
+      .mockResolvedValueOnce([makeEntry()])
+      .mockResolvedValue([makeEntry({ status: "called" })]);
     vi.mocked(queueService.updateStatus).mockResolvedValue(makeEntry({ status: "called" }));
-    vi.mocked(queueService.getActiveQueue).mockResolvedValue([makeEntry({ status: "called" })]);
+    vi.mocked(queueService.getBarbers).mockResolvedValue(mockBarbers);
+    vi.mocked(queueService.getServices).mockResolvedValue(mockServices);
+    vi.mocked(queueService.getDashboardSummary).mockResolvedValue(mockSummary);
     renderPage();
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /Call 240115-001/i })).toBeInTheDocument()

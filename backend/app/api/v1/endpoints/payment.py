@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import JSONResponse
 
-from app.core.config import get_settings
 from app.schemas.payment import (
     PaymentOrderRequest, PaymentOrderResponse,
     PaymentVerifyRequest, PaymentVerifyResponse,
@@ -18,17 +16,11 @@ router = APIRouter(prefix="/payment", tags=["Payment"])
 @router.post(
     "/create-order",
     response_model=PaymentOrderResponse,
-    summary="Create a Razorpay payment order",
+    summary="Create a (dummy) payment order",
 )
 def create_payment_order(payload: PaymentOrderRequest) -> PaymentOrderResponse:
-    """Create payment order for queue service."""
+    """Create a simulated payment order for a queue service."""
     payment_service = get_payment_service()
-
-    if not payment_service.enabled:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment service not configured."
-        )
 
     order = payment_service.create_order(
         amount_paise=payload.amount_paise,
@@ -44,29 +36,22 @@ def create_payment_order(payload: PaymentOrderRequest) -> PaymentOrderResponse:
             detail="Failed to create payment order. Please try again."
         )
 
-    settings = get_settings()
     return PaymentOrderResponse(
         order_id=order["id"],
         amount=order["amount"],
         currency=order["currency"],
-        key_id=settings.razorpay_key_id,
+        key_id="DUMMY_KEY",
     )
 
 
 @router.post(
     "/verify",
     response_model=PaymentVerifyResponse,
-    summary="Verify Razorpay payment signature",
+    summary="Verify payment signature (always succeeds in dummy mode)",
 )
 def verify_payment(payload: PaymentVerifyRequest) -> PaymentVerifyResponse:
-    """Verify payment signature and mark order as paid."""
+    """Verify payment — dummy implementation always returns success."""
     payment_service = get_payment_service()
-
-    if not payment_service.enabled:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment service not configured."
-        )
 
     is_valid = payment_service.verify_payment(
         razorpay_order_id=payload.razorpay_order_id,
@@ -74,15 +59,8 @@ def verify_payment(payload: PaymentVerifyRequest) -> PaymentVerifyResponse:
         razorpay_signature=payload.razorpay_signature,
     )
 
-    if not is_valid:
-        return PaymentVerifyResponse(
-            success=False,
-            payment_id=payload.razorpay_payment_id,
-            message="Payment signature verification failed.",
-        )
-
     return PaymentVerifyResponse(
-        success=True,
+        success=is_valid,
         payment_id=payload.razorpay_payment_id,
-        message="Payment verified successfully!",
+        message="Payment verified successfully!" if is_valid else "Verification failed.",
     )

@@ -1,23 +1,25 @@
 services:
   - type: web
-    name: fullstack-api
+    name: sovereign-blade-api
     runtime: python
-    region: singapore
-    plan: free
     rootDir: backend
-    buildCommand: "pip install -r requirements.txt && alembic upgrade head"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-    healthCheckPath: /health
+    buildCommand: pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: SECRET_KEY
-        generateValue: true
       - key: DATABASE_URL
-        sync: false          # Set manually in Render dashboard — never commit real DB URLs
+        sync: false
+      - key: SECRET_KEY
+        sync: false
       - key: FRONTEND_URL
-        sync: false          # Set to your Vercel deployment URL
+        sync: false
       - key: ALLOWED_ORIGINS
-        sync: false          # Comma-separated, e.g. https://your-app.vercel.app
-      - key: PYTHON_VERSION
-        value: "3.12.0"
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+    healthCheckPath: /health

@@ -37,10 +37,6 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_phone_number: str = ""  # e.g., +91XXXXXXXXXX
 
-    # ── Payments/Razorpay ─────────────────────────────────────────────────────
-    razorpay_key_id: str = ""  # Optional; leave empty to disable payments
-    razorpay_key_secret: str = ""
-
     @property
     def cors_origins(self) -> List[str]:
         """Return allowed origins as a list."""

@@ -1,33 +1,20 @@
-"""Payment processing service using Razorpay."""
+"""Dummy payment service — simulates Razorpay without any real charges."""
 
 from __future__ import annotations
 
-import hashlib
-import hmac
+import logging
 from typing import Optional
+from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentService:
-    """Handle Razorpay payment operations."""
+    """Simulate payment operations. Always succeeds; no external API calls."""
 
-    def __init__(self):
-        """Initialize Razorpay client (lazy-loaded)."""
-        from app.core.config import get_settings
-        
-        settings = get_settings()
-        self.key_id = settings.razorpay_key_id
-        self.key_secret = settings.razorpay_key_secret
-        self.client = None
-        self.enabled = False
-        
-        if self.key_id and self.key_secret:
-            try:
-                import razorpay
-                self.client = razorpay.Client(auth=(self.key_id, self.key_secret))
-                self.enabled = True
-            except Exception as e:
-                print(f"Razorpay initialization error: {e}")
-                self.enabled = False
+    def __init__(self) -> None:
+        self.enabled = True
+        logger.info("[DummyPayment] Payment service initialised (dummy mode — no real charges).")
 
     def create_order(
         self,
@@ -38,43 +25,34 @@ class PaymentService:
         queue_token: str,
     ) -> Optional[dict]:
         """
-        Create Razorpay order for payment.
+        Return a simulated payment order.
 
         Args:
-            amount_paise: Amount in paise (1 rupee = 100 paise)
-            customer_name: Customer name
-            customer_email: Customer email
-            customer_phone: Customer phone (10 digits)
-            queue_token: Queue token for reference
+            amount_paise: Amount in paise (1 rupee = 100 paise).
+            customer_name: Customer name.
+            customer_email: Customer email.
+            customer_phone: Customer phone number.
+            queue_token: Queue token used as the receipt reference.
 
         Returns:
-            Order details with order_id, or None if disabled/error
+            Dict with keys ``id``, ``amount``, ``currency``, ``receipt``.
         """
-        if not self.enabled or not self.client:
-            return None
-
-        try:
-            # Normalize phone number
-            phone = customer_phone.strip()
-            if not phone.startswith("+"):
-                phone = f"+91{phone}"
-
-            order_data = {
-                "amount": amount_paise,  # in paise
-                "currency": "INR",
-                "receipt": queue_token,  # Queue token as receipt
-                "customer_notify": 1,
-                "notes": {
-                    "customer_name": customer_name,
-                    "queue_token": queue_token,
-                },
-            }
-
-            order = self.client.order.create(data=order_data)
-            return order
-        except Exception as e:
-            print(f"Razorpay Order Error: {str(e)}")
-            return None
+        order_id = f"DUMMY_ORD_{uuid4().hex[:8].upper()}"
+        order = {
+            "id": order_id,
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": queue_token,
+        }
+        print(
+            f"[DummyPayment] create_order → {order_id} | ₹{amount_paise / 100:.2f} "
+            f"| customer={customer_name} | token={queue_token}"
+        )
+        logger.info(
+            "[DummyPayment] Created dummy order %s for %s (token=%s, amount_paise=%d)",
+            order_id, customer_name, queue_token, amount_paise,
+        )
+        return order
 
     def verify_payment(
         self,
@@ -83,46 +61,47 @@ class PaymentService:
         razorpay_signature: str,
     ) -> bool:
         """
-        Verify payment signature from Razorpay.
+        Always returns True — dummy verification.
 
         Args:
-            razorpay_order_id: Order ID from Razorpay
-            razorpay_payment_id: Payment ID from Razorpay
-            razorpay_signature: Signature from client
+            razorpay_order_id: Order ID (may be a dummy ID).
+            razorpay_payment_id: Payment ID (may be a dummy ID).
+            razorpay_signature: Signature string (ignored).
 
         Returns:
-            True if signature is valid, False otherwise
+            True always.
         """
-        if not self.enabled:
-            return False
-
-        try:
-            # Verify signature
-            message = f"{razorpay_order_id}|{razorpay_payment_id}".encode()
-            generated_signature = hmac.new(
-                self.key_secret.encode(),
-                message,
-                hashlib.sha256
-            ).hexdigest()
-
-            return generated_signature == razorpay_signature
-        except Exception as e:
-            print(f"Razorpay Signature Verification Error: {str(e)}")
-            return False
+        print(
+            f"[DummyPayment] verify_payment → order={razorpay_order_id} "
+            f"payment={razorpay_payment_id} → VERIFIED (dummy)"
+        )
+        logger.info(
+            "[DummyPayment] Verified dummy payment order=%s payment=%s",
+            razorpay_order_id, razorpay_payment_id,
+        )
+        return True
 
     def get_payment_details(self, payment_id: str) -> Optional[dict]:
-        """Get payment details from Razorpay."""
-        if not self.enabled or not self.client:
-            return None
+        """
+        Return simulated payment details.
 
-        try:
-            payment = self.client.payment.fetch(payment_id)
-            return payment
-        except Exception as e:
-            print(f"Razorpay Fetch Error: {str(e)}")
-            return None
+        Args:
+            payment_id: Payment ID to look up.
+
+        Returns:
+            Dict with basic payment info.
+        """
+        details = {
+            "id": payment_id,
+            "status": "captured",
+            "method": "dummy",
+            "currency": "INR",
+        }
+        print(f"[DummyPayment] get_payment_details → {payment_id}")
+        logger.info("[DummyPayment] get_payment_details called for %s", payment_id)
+        return details
 
 
 def get_payment_service() -> PaymentService:
-    """Get or create payment service instance."""
+    """Return a fresh PaymentService instance."""
     return PaymentService()

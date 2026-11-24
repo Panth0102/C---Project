@@ -1,356 +1,274 @@
-# Full-Stack Starter
+# The Sovereign Blade — Barbershop Queue Management System
 
-A production-ready monorepo template built with **React + Vite** (frontend), **FastAPI** (backend), and **PostgreSQL** (database). Deployable to Vercel and Render with a free-tier database on Supabase or Neon.
+**Live Demo:** [Deploy to get URL — see deployment instructions below]
+
+**GitHub Repository:** https://github.com/Panth0102/C---Project
 
 ---
 
-## Key Features
+## Overview
 
-- Typed end-to-end: TypeScript on the frontend, Pydantic on the backend
-- Full CRUD REST API with Swagger documentation
-- Database migrations via Alembic
-- 40 frontend tests (Vitest + React Testing Library)
-- 28 backend tests (Pytest + HTTPX) — all running against an isolated SQLite database
-- Deployment-ready configuration for Vercel, Render, and hosted PostgreSQL
-- Clean separation: pages → hooks → services → API → CRUD → DB
+A production-ready, vintage-themed barbershop queue management system. Customers join a digital queue online or via walk-in registration, receive a unique token, and track their position in real time. Barbers and receptionists manage the queue through dedicated dashboards.
 
 ---
 
 ## Technology Stack
 
-| Layer     | Technology                          |
-|-----------|-------------------------------------|
-| Frontend  | React 18, TypeScript, Vite, Tailwind CSS, React Router v6, Axios |
-| Backend   | Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic, Uvicorn |
-| Database  | PostgreSQL (local or Supabase/Neon) |
-| Testing   | Vitest, React Testing Library, Pytest, HTTPX |
-| Deployment| Vercel (frontend), Render (backend) |
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18 + TypeScript + Vite |
+| Styling | Tailwind CSS (custom vintage palette) |
+| Backend | Python 3.10+ + FastAPI |
+| Database | PostgreSQL (Neon or Supabase on free tier) |
+| ORM | SQLAlchemy 2.0 + Alembic |
+| Testing | Vitest (frontend) + Pytest (backend) |
+| Hosting | Vercel (frontend) + Render (backend) |
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-Browser
-  │
-  ▼
-React SPA (Vite)
-  ���  Axios HTTP calls → /api/v1/*
-  ▼
-FastAPI (Uvicorn)
-  │  CORS middleware validates origin
-  │
-  ├── /api/v1/items  →  endpoints/items.py
-  │                       └── item_service.py
-  │                             └── crud/item.py
-  │                                   └── SQLAlchemy (Item model)
-  │                                         └── PostgreSQL
-  │
-  └── /health, /  →  main.py
+Browser → Vercel (React SPA)
+              ↓ HTTPS API calls
+         Render (FastAPI)
+              ↓ SQLAlchemy
+         PostgreSQL (Neon/Supabase)
 ```
+
+Frontend communicates exclusively with the backend REST API (`/api/v1/`). No SSR. SPA routing handled by Vercel rewrites.
 
 ---
 
 ## Folder Structure
 
 ```
-project-root/
-├── frontend/
-│   ├── public/
+.
+├── frontend/              # React + TypeScript + Vite
 │   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   │   ├── common/       # Loading, ErrorMessage
-│   │   │   ├── layout/       # Header, Footer, Layout
-│   │   │   └── ui/           # Button
-│   │   ├── pages/            # HomePage, ItemsPage, NotFoundPage
-│   │   ├── hooks/            # useItems
-│   │   ├── services/         # apiClient, itemService
-│   │   ├── context/          # AppContext
-│   │   ├── types/            # TypeScript interfaces
-│   │   ├── utils/            # errorHandler
-│   │   ├── routes/           # React Router config
-│   │   └── test/             # All test files
-│   ├── vercel.json
-│   └── package.json
-│
-├── backend/
+│   │   ├── pages/         # 7 screens (Home, Join, Status, Reception, Barber, Display, Admin)
+│   │   ├── components/    # UI primitives + layout
+│   │   ├── services/      # API client + queue service
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── types/         # TypeScript interfaces
+│   │   └── utils/         # Error handling, formatters
+│   └── public/
+├── backend/               # FastAPI + Python
 │   ├── app/
-│   │   ├── api/v1/endpoints/ # items.py
-│   │   ├── core/             # config.py (Pydantic Settings)
-│   │   ├── db/               # base.py, session.py
-│   │   ├── models/           # item.py (SQLAlchemy model)
-│   │   ├── schemas/          # item.py (Pydantic schemas)
-│   │   ├── crud/             # item.py (database operations)
-│   │   ├── services/         # item_service.py (business logic)
-│   │   ├── middleware/        # logging.py
-│   │   └── main.py
-│   ├── tests/
-│   │   ├── unit/             # test_crud_item.py
-│   │   ├── integration/      # test_items_api.py
-│   │   ├── conftest.py
-│   │   └── test_main.py
-│   ├── alembic/
-│   │   └── versions/         # 0001_create_items_table.py
-│   ├── render.yaml
-│   └── requirements.txt
-│
-├── docs/
-│   ├── API.md
-│   ├── DATABASE.md
-│   └── DEPLOYMENT.md
-├── README.md
-└── LICENSE
+│   │   ├── api/v1/        # Route handlers
+│   │   ├── models/        # SQLAlchemy ORM models
+│   │   ├── schemas/       # Pydantic request/response schemas
+│   │   ├── services/      # Business logic (queue, SMS, payment)
+│   │   ├── crud/          # Database operations
+│   │   └── core/          # Config, settings
+│   ├── alembic/           # Database migrations
+│   └── tests/             # Pytest test suite
+├── docs/                  # Product documentation
+├── render.yaml            # Render deployment config
+├── vercel.json            # Vercel deployment config
+└── README.md
 ```
 
 ---
 
-## Prerequisites
+## Screens (7 Routes)
 
-- **Node.js** 18+ and npm
-- **Python** 3.12 (`brew install python@3.12` on macOS)
-- **PostgreSQL** 14+ (for local development; not required for running tests)
-- Git
+| Route | Screen | Description |
+|-------|--------|-------------|
+| `/` | Home | Landing page with hero, services, barbers, hours |
+| `/join` | Join Queue | 3-step: select services → choose barber → enter details |
+| `/status/:token` | Customer Status | Live position, ETA, cancel button |
+| `/reception` | Reception Dashboard | Queue management, walk-in add, barber stations |
+| `/barber/:name` | Barber View | Personal queue, start/done/break controls |
+| `/display` | Waiting Area Display | Public TV screen showing current token |
+| `/admin` | Admin Settings | View services, barbers, statistics |
+| `/walk-in` | Walk-In Registration | Customer self-registration form |
 
 ---
 
-## Installation
+## Local Development
 
-### 1. Clone the repository
+### Prerequisites
+- Node.js 18+
+- Python 3.10+
+- PostgreSQL (or use SQLite for tests)
+
+### Backend Setup
+
 ```bash
-git clone https://github.com/your-username/your-repo.git
-cd your-repo
+cd backend
+python -m venv venv
+source venv/bin/activate      # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env          # Edit with your database URL
+alembic upgrade head
+uvicorn app.main:app --reload
+# API available at http://localhost:8000
+# Swagger UI at http://localhost:8000/docs
 ```
 
-### 2. Frontend setup
+### Frontend Setup
+
 ```bash
 cd frontend
 npm install
-cp .env.example .env
-# Edit .env if your backend runs on a port other than 8000
-```
-
-### 3. Backend setup
-```bash
-cd backend
-python3.12 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your DATABASE_URL and other values
+cp .env.example .env.local    # Set VITE_API_BASE_URL=http://localhost:8000
+npm run dev
+# App available at http://localhost:5173
 ```
 
 ---
 
-## PostgreSQL Configuration
+## Testing
 
-### Local
+### Backend Tests (Pytest)
 ```bash
-# macOS
-brew install postgresql@16 && brew services start postgresql@16
-psql -U postgres -c "CREATE DATABASE appdb;"
+cd backend
+source venv/bin/activate
+pytest -v
 ```
 
-Set in `backend/.env`:
+### Frontend Tests (Vitest)
+```bash
+cd frontend
+npm test
 ```
-DATABASE_URL=postgresql://postgres:password@localhost:5432/appdb
-```
-
-### Hosted (Supabase / Neon)
-See [`docs/DATABASE.md`](docs/DATABASE.md) for step-by-step instructions.
 
 ---
 
 ## Environment Variables
 
-### `frontend/.env`
-```bash
-VITE_API_BASE_URL=http://localhost:8000
-```
+### Backend (`backend/.env`)
 
-### `backend/.env`
-```bash
-DATABASE_URL=postgresql://postgres:password@localhost:5432/appdb
-SECRET_KEY=change-me-to-a-long-random-string-in-production
-ENVIRONMENT=development
-FRONTEND_URL=http://localhost:5173
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-```
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL connection string | ✅ |
+| `SECRET_KEY` | JWT signing secret | ✅ |
+| `ENVIRONMENT` | `development` / `production` | ✅ |
+| `FRONTEND_URL` | Frontend origin URL | ✅ |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins | ✅ |
+| `TWILIO_ACCOUNT_SID` | Twilio account (SMS optional) | ❌ |
+| `TWILIO_AUTH_TOKEN` | Twilio auth token | ❌ |
+| `TWILIO_PHONE_NUMBER` | Twilio sender number | ❌ |
 
----
+### Frontend (`frontend/.env.local`)
 
-## Running Locally
-
-### Backend
-```bash
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --reload --port 8000
-```
-API available at: http://localhost:8000  
-Swagger UI: http://localhost:8000/docs
-
-### Frontend
-```bash
-cd frontend
-npm run dev
-```
-App available at: http://localhost:5173
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_BASE_URL` | Backend API URL (e.g. `https://api.onrender.com`) |
 
 ---
 
-## Running Tests
+## Database Setup
 
-### Frontend tests
+### Local (PostgreSQL)
 ```bash
-cd frontend
-npm run test               # single run
-npm run test:watch         # watch mode
-npm run test:coverage      # with coverage report
-```
-
-### Backend tests
-```bash
-cd backend
-source .venv/bin/activate
-pytest                     # all tests
-pytest -m unit             # unit tests only
-pytest -m integration      # integration tests only
-pytest --cov=app --cov-report=html   # with HTML coverage report
-```
-
----
-
-## Database Migrations
-
-```bash
-cd backend
-source .venv/bin/activate
-
-# Apply all pending migrations
+psql -U postgres -c "CREATE DATABASE sovereignblade;"
+# Set DATABASE_URL=postgresql://postgres:password@localhost:5432/sovereignblade
 alembic upgrade head
-
-# Create a new migration (after changing a model)
-alembic revision --autogenerate -m "add column to items"
-
-# Roll back one migration
-alembic downgrade -1
-
-# Show current state
-alembic current
 ```
 
----
-
-## API Endpoints
-
-| Method | Endpoint             | Description          |
-|--------|----------------------|----------------------|
-| GET    | `/`                  | Welcome message      |
-| GET    | `/health`            | Health check         |
-| GET    | `/api/v1/items/`     | List all items       |
-| POST   | `/api/v1/items/`     | Create an item       |
-| GET    | `/api/v1/items/{id}` | Get item by ID       |
-| PUT    | `/api/v1/items/{id}` | Update an item       |
-| DELETE | `/api/v1/items/{id}` | Delete an item       |
-
-Full request/response documentation: [`docs/API.md`](docs/API.md)
+### Hosted (Neon — recommended free tier)
+1. Create project at https://neon.tech
+2. Copy connection string
+3. Set `DATABASE_URL` in Render environment variables
+4. Alembic runs automatically on deploy
 
 ---
 
-## Swagger Documentation
+## API Reference
 
-With the backend running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+Base URL: `/api/v1`
 
----
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/queue/services` | GET | List all services |
+| `/queue/barbers` | GET | List all barbers |
+| `/queue/join` | POST | Customer joins queue |
+| `/queue/walkin` | POST | Receptionist adds walk-in |
+| `/queue/status/{token}` | GET | Get entry by token |
+| `/queue/active` | GET | All active entries |
+| `/queue/{id}/status` | PATCH | Update entry status |
+| `/queue/{id}/cancel` | DELETE | Customer cancel |
+| `/queue/barbers/{id}/status` | PATCH | Update barber status |
+| `/queue/dashboard/summary` | GET | Dashboard stats |
+| `/payment/create-order` | POST | Create dummy payment order |
+| `/payment/verify` | POST | Verify payment (always succeeds) |
+| `/health` | GET | Health check |
 
-## Git & GitHub Workflow
-
-```bash
-# Start a feature
-git checkout -b feature/my-feature
-
-# Commit
-git add .
-git commit -m "feat: add my feature"
-
-# Push and open a pull request
-git push origin feature/my-feature
-```
-
-Suggested branch naming: `feature/`, `fix/`, `docs/`, `chore/`.
+Full interactive docs: `http://localhost:8000/docs`
 
 ---
 
-## Vercel Deployment (Frontend)
+## Deployment
 
-1. Push the repository to GitHub.
-2. Go to https://vercel.com → **Add New Project** → import the repo.
-3. Set **Root Directory** to `frontend`.
-4. Add environment variable: `VITE_API_BASE_URL=https://your-api.onrender.com`
-5. Click **Deploy**.
+### Step 1: Database (Neon)
+1. Sign up at https://neon.tech (free)
+2. Create a new project
+3. Copy the connection string — format: `postgresql://user:pass@host/dbname?sslmode=require`
 
-The `frontend/vercel.json` handles SPA routing rewrites automatically.
+### Step 2: Backend (Render)
+1. Sign up at https://render.com (free)
+2. Click **New → Web Service**
+3. Connect your GitHub repository
+4. Settings:
+   - **Root Directory:** `backend`
+   - **Build Command:** `pip install -r requirements.txt && alembic upgrade head`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add environment variables:
+   - `DATABASE_URL` = your Neon connection string
+   - `SECRET_KEY` = any long random string
+   - `ENVIRONMENT` = `production`
+   - `FRONTEND_URL` = your Vercel URL (add after Step 3)
+   - `ALLOWED_ORIGINS` = your Vercel URL
+6. Deploy and note the backend URL (e.g. `https://sovereign-blade-api.onrender.com`)
 
----
+### Step 3: Frontend (Vercel)
+1. Sign up at https://vercel.com (free)
+2. Click **Add New → Project**
+3. Import your GitHub repository
+4. Settings:
+   - **Framework Preset:** Vite
+   - **Root Directory:** `frontend`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+5. Environment Variables:
+   - `VITE_API_BASE_URL` = your Render backend URL
+6. Deploy
 
-## Render Deployment (Backend)
-
-The simplest path uses the included `backend/render.yaml`:
-
-1. Go to https://render.com → **New → Blueprint**.
-2. Connect your GitHub repository.
-3. In the Render dashboard, set these environment variables:
-   - `DATABASE_URL` — your Supabase or Neon connection string
-   - `FRONTEND_URL` — your Vercel URL
-   - `ALLOWED_ORIGINS` — your Vercel URL
-
-Alembic runs automatically during the build step.
-
-Full instructions: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
-
----
-
-## Database Hosting
-
-See [`docs/DATABASE.md`](docs/DATABASE.md) for:
-- Setting up Supabase
-- Setting up Neon
-- Running migrations against a hosted database
-
----
-
-## Troubleshooting
-
-**Backend fails to start — `DATABASE_URL` error**  
-Copy `.env.example` to `.env` in the `backend/` directory and fill in your database credentials.
-
-**Tests fail on Python 3.14**  
-Use Python 3.12: `brew install python@3.12` then recreate the venv with `python3.12 -m venv .venv`.
-
-**Frontend cannot reach the backend**  
-Confirm `VITE_API_BASE_URL` in `frontend/.env` matches the port your backend is running on.
-
-**CORS errors in the browser**  
-Add your frontend origin to `ALLOWED_ORIGINS` in `backend/.env`.
-
-**`alembic upgrade head` fails on a hosted database**  
-Make sure the `DATABASE_URL` in Render's environment variables includes `?sslmode=require` for Supabase/Neon.
+### Step 4: Update CORS
+After both are deployed:
+- In Render, update `FRONTEND_URL` and `ALLOWED_ORIGINS` to your Vercel URL
+- Redeploy the backend
 
 ---
 
-## Contributing
+## Free Tier Limitations
 
-1. Fork the repository.
-2. Create a branch: `git checkout -b feature/your-feature`.
-3. Make your changes and add tests.
-4. Run `npm run test` and `pytest` — both must pass.
-5. Open a pull request with a clear description.
+| Service | Limitation |
+|---------|-----------|
+| Render (backend) | Spins down after 15 min inactivity; ~30s cold start |
+| Neon (database) | 0.5 GB storage, 1 compute unit |
+| Vercel (frontend) | 100 GB bandwidth/month, unlimited deployments |
+
+**Mitigation for Render cold starts:** The frontend shows a loading spinner while the first API call wakes the backend. Expected delay: 20-30 seconds on first visit after inactivity.
 
 ---
 
-## License
+## Queue Business Rules
 
-[MIT](LICENSE)
+- **FCFS:** Customers served in join order
+- **Duplicate prevention:** One active queue entry per phone number
+- **Barber assignment:** Auto-assigns least-loaded available barber; manual lock respected
+- **Cancellation:** Customer can cancel only while `waiting`
+- **No-show:** Receptionist marks manually; customer can rejoin
+- **Break handling:** Barbers on break excluded from auto-assignment
+- **ETA:** Recalculates on every queue mutation
+
+---
+
+## Payment
+
+Payment is **simulated (dummy)** — no real charges. The system generates a fake order ID and always confirms payment. This is intentional for demonstration purposes.
+
+To enable real Razorpay payments in production, replace `backend/app/services/payment_service.py` with the Razorpay implementation and add `razorpay` to `requirements.txt`.

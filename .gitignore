@@ -26,3 +26,6 @@ yarn-error.log*
 # ─── Temp ─────────────────────────────────────────────────────────────────────
 *.tmp
 *.temp
+
+# ─── Project documentation (internal notes, not tracked) ──────────────────────
+project-docs/

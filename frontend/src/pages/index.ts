@@ -1,7 +1,9 @@
-export * from "./CustomerStatusPage";
-export * from "./HomePage";
-export * from "./ItemsPage";
-export * from "./JoinQueuePage";
-export * from "./NotFoundPage";
-export * from "./ReceptionPage";
-export * from "./WalkInRegistrationPage";
+export { HomePage }                from "./HomePage";
+export { JoinQueuePage }           from "./JoinQueuePage";
+export { CustomerStatusPage }      from "./CustomerStatusPage";
+export { ReceptionPage }           from "./ReceptionPage";
+export { WalkInRegistrationPage }  from "./WalkInRegistrationPage";
+export { BarberPage }              from "./BarberPage";
+export { DisplayPage }             from "./DisplayPage";
+export { AdminPage }               from "./AdminPage";
+export { NotFoundPage }            from "./NotFoundPage";

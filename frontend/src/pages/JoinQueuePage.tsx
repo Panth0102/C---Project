@@ -15,6 +15,7 @@ import {
 import { BARBERS, SERVICES } from "@/data/salon";
 import type { Service, Barber } from "@/data/salon";
 import type { } from "@/types/queue";
+import { queueService } from "@/services/queueService";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const MAX_SERVICES = 3;
@@ -656,17 +657,15 @@ export function JoinQueuePage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      // Simulate API call — replace with real queueService.joinQueue(payload)
-      await new Promise<void>((resolve) => setTimeout(resolve, 1200));
-
-      // Simulate duplicate phone check (last 4 digits "0000" triggers error for demo)
-      if (phone.endsWith("0000")) {
-        throw new Error("A queue entry with this mobile number is already active.");
-      }
-
-      // On success, navigate to status page (token is mocked here)
-      const mockToken = `SB-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-      navigate(`/status/${mockToken}`, { replace: true });
+      const barberNumericId = barberId === "any" ? null : Number(barberId);
+      const serviceNumericIds = selectedServiceIds.map(Number);
+      const entry = await queueService.joinQueue({
+        customer_name: customerName.trim(),
+        phone,
+        service_ids: serviceNumericIds,
+        barber_id: barberNumericId,
+      });
+      navigate(`/status/${entry.token}`, { replace: true });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to join queue. Please try again.");
       setShowConfirm(false);
