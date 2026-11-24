@@ -1,0 +1,91 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip setuptools
+          pip install -r requirements.txt
+
+      - name: Run tests with pytest
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/test_db
+          ENVIRONMENT: test
+          SECRET_KEY: test-secret-key-for-ci
+          ALLOWED_ORIGINS: http://localhost:5173
+        run: |
+          cd backend
+          pytest --cov=app --cov-report=xml --cov-report=term-missing -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results
+          path: backend/.pytest_cache/
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const testLog = `✅ Backend tests passed on Python 3.12
+            
+            **Database:** PostgreSQL 15
+            **Coverage:** See Codecov report
+            
+            Run \`cd backend && pytest -v\` to verify locally.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: testLog
+            });
