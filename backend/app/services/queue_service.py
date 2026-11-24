@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.crud import queue as queue_crud
 from app.models.queue import BarberStatus, Barber, Queue, QueueStatus, Service
 from app.schemas.queue import DashboardSummary
+from app.services.sms_service import get_sms_service
 
 
 # ── Fetchers with 404 ─────────────────────────────────────────────────────────
@@ -64,7 +65,16 @@ def join_queue(
             )
 
     try:
-        return queue_crud.create_queue_entry(db, customer_name, phone, service_ids, barber_id)
+        entry = queue_crud.create_queue_entry(db, customer_name, phone, service_ids, barber_id)
+        
+        # Send welcome SMS
+        sms = get_sms_service()
+        if entry.position is not None:
+            sms.send_queue_joined_sms(
+                customer_name, phone, entry.token, entry.position, entry.estimated_wait_minutes
+            )
+        
+        return entry
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -88,7 +98,14 @@ def transition_status(db: Session, entry: Queue, new_status: QueueStatus) -> Que
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Cannot transition from '{entry.status}' to '{new_status}'.",
         )
-    return queue_crud.update_queue_status(db, entry, new_status)
+    result = queue_crud.update_queue_status(db, entry, new_status)
+    
+    # Send SMS on specific transitions
+    if new_status == QueueStatus.called and entry.barber:
+        sms = get_sms_service()
+        sms.send_called_sms(entry.customer_name, entry.phone, entry.token, entry.barber.name)
+    
+    return result
 
 
 def cancel_by_customer(db: Session, entry: Queue) -> Queue:

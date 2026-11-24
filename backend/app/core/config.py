@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
 
+    # ── SMS/Twilio ───────────────────────────────────────────────────────────
+    twilio_account_sid: str = ""  # Optional; leave empty to disable SMS
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""  # e.g., +91XXXXXXXXXX
+
     @property
     def cors_origins(self) -> List[str]:
         """Return allowed origins as a list."""
