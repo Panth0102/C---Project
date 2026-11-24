@@ -2,8 +2,9 @@
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import items, queue
+from app.api.v1.endpoints import items, queue, payment
 
 api_router = APIRouter()
 api_router.include_router(items.router)
 api_router.include_router(queue.router)
+api_router.include_router(payment.router)
