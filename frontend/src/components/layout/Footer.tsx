@@ -1,9 +1,9 @@
+import { Link } from "react-router-dom";
 import { ScissorsIcon, BarberPoleIcon } from "@/components/ui/VintageIcons";
 
 export function Footer() {
   return (
     <footer className="bg-brown border-t border-gold/20 grain-overlay">
-      {/* Top ornament */}
       <div className="border-t-2 border-copper/60 mx-0" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
@@ -16,7 +16,8 @@ export function Footer() {
           <ScissorsIcon className="w-5 h-5 text-gold/50" aria-hidden="true" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+
           {/* About */}
           <div>
             <h3 className="font-heading text-gold text-sm tracking-widest uppercase mb-4">
@@ -28,26 +29,55 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Quick links */}
+          {/* Customer links */}
           <div>
             <h3 className="font-heading text-gold text-sm tracking-widest uppercase mb-4">
-              Navigate
+              Customers
             </h3>
             <ul className="space-y-2">
               {[
-                { label: "Services",    href: "/#services" },
-                { label: "Our Barbers", href: "/#barbers"  },
-                { label: "Join Queue",  href: "/join"      },
-                { label: "About",       href: "/#about"    },
-              ].map(({ label, href }) => (
-                <li key={href}>
+                { label: "Join Queue",       to: "/join"     },
+                { label: "Walk-In Register", to: "/walk-in"  },
+                { label: "Services",         to: "/#services"},
+                { label: "Our Barbers",      to: "/#barbers" },
+                { label: "About",            to: "/#about"   },
+              ].map(({ label, to }) => (
+                <li key={to}>
                   <a
-                    href={href}
+                    href={to}
                     className="text-parchment/60 hover:text-gold text-sm font-body
                                transition-colors uppercase tracking-widest"
                   >
                     {label}
                   </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Staff links */}
+          <div>
+            <h3 className="font-heading text-gold text-sm tracking-widest uppercase mb-4">
+              Staff
+            </h3>
+            <ul className="space-y-2">
+              {[
+                { label: "Reception",      to: "/reception"       },
+                { label: "Waiting Display",to: "/display"         },
+                { label: "Admin",          to: "/admin"           },
+                { label: "Rajan Mehta",    to: "/barber/Rajan Mehta" },
+                { label: "Arjun Shah",     to: "/barber/Arjun Shah"  },
+                { label: "Dev Patel",      to: "/barber/Dev Patel"   },
+                { label: "Kiran Joshi",    to: "/barber/Kiran Joshi" },
+              ].map(({ label, to }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    className="text-parchment/60 hover:text-gold text-sm font-body
+                               transition-colors uppercase tracking-widest"
+                  >
+                    {label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -75,7 +105,7 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom divider & copyright */}
+        {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-gold/20 flex flex-col sm:flex-row
                         items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-parchment/40 text-xs font-body tracking-widest">
