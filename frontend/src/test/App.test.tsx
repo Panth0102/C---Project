@@ -5,12 +5,12 @@ import App from "@/App";
 describe("App", () => {
   it("renders without crashing", () => {
     render(<App />);
-    // The router renders the home page by default.
     expect(document.body).toBeTruthy();
   });
 
-  it("renders the home page heading", () => {
+  it("renders the vintage salon title", () => {
     render(<App />);
-    expect(screen.getByText(/Full-Stack Starter/i)).toBeInTheDocument();
+    // The hero h1 contains "The Sovereign" (split across lines)
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
 });

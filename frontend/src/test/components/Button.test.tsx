@@ -25,28 +25,32 @@ describe("Button", () => {
     render(<Button loading>Saving…</Button>);
     const btn = screen.getByRole("button");
     expect(btn).toBeDisabled();
-    // SVG spinner is present
     expect(btn.querySelector("svg")).toBeTruthy();
   });
 
   it("does not fire onClick when disabled", async () => {
     const handleClick = vi.fn();
-    render(
-      <Button disabled onClick={handleClick}>
-        Nope
-      </Button>
-    );
+    render(<Button disabled onClick={handleClick}>Nope</Button>);
     await userEvent.click(screen.getByRole("button"));
     expect(handleClick).not.toHaveBeenCalled();
   });
 
-  it("applies danger variant class", () => {
+  it("applies danger variant class (red background)", () => {
     render(<Button variant="danger">Delete</Button>);
-    expect(screen.getByRole("button")).toHaveClass("bg-red-600");
+    // The vintage danger variant uses bg-red-900/80
+    const btn = screen.getByRole("button");
+    expect(btn.className).toMatch(/bg-red/);
   });
 
-  it("applies secondary variant class", () => {
+  it("applies secondary variant class (transparent background)", () => {
     render(<Button variant="secondary">Cancel</Button>);
-    expect(screen.getByRole("button")).toHaveClass("bg-white");
+    const btn = screen.getByRole("button");
+    expect(btn.className).toMatch(/bg-transparent/);
+  });
+
+  it("applies primary variant class (copper background)", () => {
+    render(<Button variant="primary">Submit</Button>);
+    const btn = screen.getByRole("button");
+    expect(btn.className).toMatch(/bg-copper/);
   });
 });

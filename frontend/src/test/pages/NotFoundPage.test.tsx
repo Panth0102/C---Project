@@ -21,4 +21,13 @@ describe("NotFoundPage", () => {
     );
     expect(screen.getByRole("link", { name: /Back to Home/i })).toBeInTheDocument();
   });
+
+  it("renders a Join Queue link", () => {
+    render(
+      <MemoryRouter>
+        <NotFoundPage />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole("link", { name: /Join Queue/i })).toBeInTheDocument();
+  });
 });

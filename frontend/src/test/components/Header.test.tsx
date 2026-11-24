@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Header } from "@/components/layout/Header";
@@ -12,29 +13,41 @@ function renderHeader(initialPath = "/") {
 }
 
 describe("Header", () => {
-  it("renders the app logo text", () => {
+  it("renders the salon name", () => {
     renderHeader();
-    expect(screen.getByText(/FullStack App/i)).toBeInTheDocument();
+    expect(screen.getByText(/The Sovereign Blade/i)).toBeInTheDocument();
   });
 
-  it("renders the Home navigation link", () => {
+  it("renders the logo link pointing to /", () => {
     renderHeader();
-    // The nav contains a "Home" link; use getAllBy and check at least one exists.
-    const homeLinks = screen.getAllByRole("link", { name: /Home/i });
-    // One of them is the logo (aria-label="Go to home"), the other is the nav link.
-    // We confirm the nav link with text "Home" is present.
-    const navHome = homeLinks.find((el) => el.textContent?.trim() === "Home");
-    expect(navHome).toBeInTheDocument();
+    const logoLink = screen.getByRole("link", { name: /The Sovereign Blade.*Home/i });
+    expect(logoLink).toHaveAttribute("href", "/");
   });
 
-  it("renders the Items navigation link", () => {
+  it("renders Join Queue CTA link in desktop nav", () => {
     renderHeader();
-    expect(screen.getByRole("link", { name: /Items/i })).toBeInTheDocument();
+    // Desktop CTA link
+    const joinLinks = screen.getAllByRole("link", { name: /Join Queue/i });
+    expect(joinLinks.length).toBeGreaterThan(0);
+    expect(joinLinks[0]).toHaveAttribute("href", "/join");
   });
 
-  it("logo link points to /", () => {
+  it("renders navigation links for Services, Barbers, About", () => {
     renderHeader();
-    const logo = screen.getByRole("link", { name: /Go to home/i });
-    expect(logo).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: /Services/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Barbers/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /About/i })).toBeInTheDocument();
+  });
+
+  it("mobile menu opens when hamburger is clicked", async () => {
+    renderHeader();
+    const burger = screen.getByRole("button", { name: /Toggle mobile menu/i });
+    await userEvent.click(burger);
+    expect(screen.getByRole("navigation", { name: /Mobile navigation/i })).toBeInTheDocument();
+  });
+
+  it("renders language toggle button", () => {
+    renderHeader();
+    expect(screen.getByRole("button", { name: /Toggle language/i })).toBeInTheDocument();
   });
 });
