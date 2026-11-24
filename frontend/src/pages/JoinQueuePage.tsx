@@ -720,10 +720,20 @@ export function JoinQueuePage() {
         service_ids: selectedServiceIds,       // already number[] from API data
         barber_id:   barberId,                 // number | null
       });
+      // Success: close modal then navigate (keep modal open during the await)
+      setShowConfirm(false);
       navigate(`/status/${entry.token}`, { replace: true });
     } catch (err) {
-      setSubmitError(getErrorMessage(err));
+      const msg = getErrorMessage(err);
+      setSubmitError(
+        msg === "Request failed with status code 409"
+          ? "A queue entry with this phone number is already active."
+          : msg.includes("timeout") || msg.includes("Network")
+          ? "Could not reach the server. Please check your connection and try again."
+          : msg,
+      );
       setShowConfirm(false);
+    } finally {
       setSubmitting(false);
     }
   };

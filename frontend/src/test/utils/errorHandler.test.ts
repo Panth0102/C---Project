@@ -27,7 +27,7 @@ describe("getErrorMessage", () => {
   it("returns 422 message for validation errors without detail array", () => {
     const err = new axios.AxiosError("Validation error");
     err.response = { data: {}, status: 422 } as never;
-    expect(getErrorMessage(err)).toBe("Invalid request data.");
+    expect(getErrorMessage(err)).toBe("Invalid request data. Please check your inputs.");
   });
 });
 
